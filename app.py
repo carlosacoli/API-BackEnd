@@ -352,6 +352,7 @@ def get_toedit_factura_ingreso(id):
     result = multi_factura_ingreso_schema.dump(query)
     return jsonify(result)
 
+
 #EndPoint for querying a single factura_ingreso
 @app.route('/factura_ingreso/get/<id>', methods=["GET"])
 def get_single_factura_ingreso(id):
@@ -361,7 +362,6 @@ def get_single_factura_ingreso(id):
 #EndPoint for updating a factura_ingreso
 @app.route('/factura_ingreso/update/<id>', methods=["PATCH"])
 def factura_ingreso_update(id):
-    # factura_ingreso = Factura_ingreso.query.get(id)
     factura_ingreso = db.session.get(Factura_ingreso, id)
     concepto = request.form['concepto']
     fecha_ingreso = request.form['fecha_ingreso']
@@ -396,7 +396,7 @@ def factura_ingreso_delete(id):
 
     return "La Factura de Ingreso se elimino correctamente!"
 
-#EndPoint for Download a Invoice
+#EndPoint for Download a Invoice Ingreso
 @app.route('/factura_ingreso/download/<down_id>', methods=["GET"])
 def factura_ingreso_download(down_id):
     download = Factura_ingreso.query.filter_by(id=down_id).first()
@@ -428,18 +428,19 @@ def rejected_factura_ingreso(id):
 #Table Factura_gasto and EndPoints
 class Factura_gasto(db.Model):
     id = db.Column(db.Integer, primary_key=True)
-    concepto = db.Column(db.String (100), nullable=False, unique=False)
-    fecha_gasto = db.Column(db.String, nullable=False, unique=False)
-    fecha_subida = db.Column(db.String, nullable=False, unique=False)
-    base_imp = db.Column(db.Integer, nullable=False, unique=False)
-    iva = db.Column(db.Integer, nullable=False, unique=False)
-    total_gasto = db.Column(db.Integer, nullable=False, unique=False)
-    archivo = db.Column(db.String, nullable=False, unique=False)
-    estado_factura = db.Column(db.String, nullable=False, unique=False)
+    concepto = db.Column(db.String (100), nullable=False)
+    fecha_gasto = db.Column(db.Date, nullable=False)
+    fecha_subida = db.Column(db.Date, nullable=False)
+    base_imp = db.Column(db.Integer, nullable=False)
+    iva = db.Column(db.Integer, nullable=False)
+    total_gasto = db.Column(db.Integer, nullable=False)
+    archivo = db.Column(db.LargeBinary, nullable=False)
+    nombre_archivo = db.Column(db.VARCHAR(100), nullable=False)
+    estado_factura = db.Column(db.String, nullable=False)
     id_factura_usuario = db.Column(db.Integer)
 
     def __init__(self, concepto, fecha_gasto, fecha_subida, base_imp, iva, 
-                 total_gasto, archivo, estado_factura, id_factura_usuario):
+                 total_gasto, archivo,nombre_archivo, estado_factura, id_factura_usuario):
         self.concepto = concepto
         self.fecha_gasto = fecha_gasto
         self.fecha_subida = fecha_subida
@@ -447,6 +448,7 @@ class Factura_gasto(db.Model):
         self.iva = iva
         self.total_gasto = total_gasto
         self.archivo = archivo
+        self.nombre_archivo = nombre_archivo
         self.estado_factura = estado_factura
         self.id_factura_usuario = id_factura_usuario
 
@@ -454,7 +456,7 @@ class Factura_gasto(db.Model):
 class Factura_gastoSchema(ma.Schema):
     class Meta:
         fields = ('id','concepto','fecha_gasto','fecha_subida','base_imp','iva',
-                  'total_gasto','archivo','estado_factura','id_factura_usuario')
+                  'total_gasto','archivo','nombre_archivo','estado_factura','id_factura_usuario')
         
 factura_gasto_schema = Factura_gastoSchema()
 multi_factura_gasto_schema = Factura_gastoSchema(many=True)
@@ -463,33 +465,44 @@ multi_factura_gasto_schema = Factura_gastoSchema(many=True)
 @app.route('/factura_gasto/add', methods=["POST"])
 def add_factura_gasto():
     
-        concepto = request.json['concepto']
-        fecha_gasto = request.json['fecha_gasto']
-        fecha_subida = request.json['fecha_subida']
-        base_imp = request.json['base_imp']
-        iva = request.json['iva']
-        total_gasto = request.json['total_gasto']
-        archivo = request.json['archivo']
-        estado_factura = request.json['estado_factura']
-        id_factura_usuario = request.json['id_factura_usuario']
+        concepto = request.form['concepto']
+        fecha_gasto = request.form['fecha_gasto']
+        fecha_gasto = datetime.strptime(fecha_gasto, "%d/%m/%Y")
+        fecha_subida = request.form['fecha_subida']
+        fecha_subida = datetime.strptime(fecha_subida, "%d/%m/%Y")
+        base_imp = request.form['base_imp']
+        iva = request.form['iva']
+        total_gasto = request.form['total_gasto']
+        archivo = request.files['archivo']
+        archivo = archivo.read()
+        n_archivo = request.files['archivo']
+        nombre_archivo = n_archivo.filename
+        estado_factura = request.form['estado_factura']
+        id_factura_usuario = request.form['id_factura_usuario']
 
         new_factura_gasto = Factura_gasto(concepto, fecha_gasto, fecha_subida,
                                               base_imp, iva, total_gasto, archivo,
-                                              estado_factura, id_factura_usuario)
+                                              nombre_archivo, estado_factura, id_factura_usuario)
         
         db.session.add(new_factura_gasto)
         db.session.commit()
 
-        factura_gasto = Factura_gasto.query.get(new_factura_gasto.id)
+        # factura_gasto = Factura_gasto.query.get(new_factura_gasto.id)
+        # return factura_gasto_schema.jsonify(factura_gasto)
 
-        return factura_gasto_schema.jsonify(factura_gasto)
+        return "Factura subida exitosamente"
 
-#EndPoint to query all factura_gasto
+
+#EndPoint to query all exept "archivo" in table factura_ingreso
 @app.route('/factura_gasto/get', methods=["GET"])
 def get_facturas_gastos():
-    all_facturas_gastos = Factura_gasto.query.all()
-    result = multi_factura_gasto_schema.dump(all_facturas_gastos)
+    query = db.session.execute(db.select(Factura_gasto.id,Factura_gasto.concepto, Factura_gasto.fecha_gasto, Factura_gasto.fecha_subida,
+                       Factura_gasto.base_imp, Factura_gasto.iva, Factura_gasto.total_gasto, Factura_gasto.nombre_archivo, 
+                       Factura_gasto.estado_factura, Factura_gasto.id_factura_usuario))
+
+    result = multi_factura_gasto_schema.dump(query)
     return jsonify(result)
+
 
 #EndPoint for querying a single factura_gasto
 @app.route('/factura_gasto/get/<id>', methods=["GET"])
@@ -497,32 +510,33 @@ def get_single_factura_gasto(id):
      single_factura_gasto = Factura_gasto.query.get(id)
      return factura_gasto_schema.jsonify(single_factura_gasto)
 
+
+
 #EndPoint for updating a factura_gasto
-@app.route('/factura_gasto/update/<id>', methods=["PUT"])
+@app.route('/factura_gasto/update/<id>', methods=["PATCH"])
 def factura_gasto_update(id):
-    factura_gasto = Factura_gasto.query.get(id)
-    concepto = request.json['concepto']
-    fecha_gasto = request.json['fecha_gasto']
-    fecha_subida = request.json['fecha_subida']
-    base_imp = request.json['base_imp']
-    iva = request.json['iva']
-    total_gasto = request.json['total_gasto']
-    archivo = request.json['archivo']
-    estado_factura = request.json['estado_factura']
-    id_factura_usuario = request.json['id_factura_usuario']
+    factura_gasto = db.session.get(Factura_gasto, id)
+    concepto = request.form['concepto']
+    fecha_gasto = request.form['fecha_gasto']
+    fecha_gasto = datetime.strptime(fecha_gasto, "%d/%m/%Y")
+    base_imp = request.form['base_imp']
+    iva = request.form['iva']
+    total_gasto = request.form['total_gasto']
+    archivo = request.files['archivo']
+    archivo = archivo.read()
+    n_archivo = request.files['archivo']
+    nombre_archivo = n_archivo.filename
 
     factura_gasto.concepto = concepto
-    factura_gasto.fecha_gasto = fecha_gasto
-    factura_gasto.fecha_subida = fecha_subida
+    factura_gasto.fecha_ingreso = fecha_gasto
     factura_gasto.base_imp = base_imp
     factura_gasto.iva = iva
-    factura_gasto.total_gasto = total_gasto
+    factura_gasto.total_ingreso = total_gasto
     factura_gasto.archivo = archivo
-    factura_gasto.estado_factura = estado_factura
-    factura_gasto.id_factura_usuario = id_factura_usuario
+    factura_gasto.nombre_archivo = nombre_archivo
 
     db.session.commit()
-    return factura_gasto_schema.jsonify(factura_gasto)
+    return "factura actualizada exitosamente"
 
 #EndPoint for deleting a record
 @app.route('/factura_gasto/delete/<id>', methods=["DELETE"])
@@ -532,6 +546,37 @@ def factura_gasto_delete(id):
     db.session.commit()
 
     return "La Factura de Gasto se elimino correctamente!"
+
+
+#EndPoint for Download a Invoice Gasto
+@app.route('/factura_gasto/download/<down_id>', methods=["GET"])
+def factura_gasto_download(down_id):
+    download = Factura_gasto.query.filter_by(id=down_id).first()
+    return send_file(BytesIO(download.archivo), download_name=download.nombre_archivo, as_attachment=True)
+
+#EndPoint for accept facturas gasto
+@app.route('/factura_gasto/accept/<id>', methods=["PUT"])
+def accept_factura_gasto(id):
+    factura_gasto = Factura_gasto.query.get(id)
+    estado_factura = "ACEPTADA"
+
+    factura_gasto.estado_factura = estado_factura
+
+    db.session.commit()
+    return "Factura aceptada con exito"
+
+#EndPoint for reject facturas gasto
+@app.route('/factura_gasto/rejected/<id>', methods=["PUT"])
+def rejected_factura_gasto(id):
+    factura_gasto = Factura_gasto.query.get(id)
+    estado_factura = "RECHAZADA"
+
+    factura_gasto.estado_factura = estado_factura
+
+    db.session.commit()
+    return "Factura rechazada con exito"
+
+
 
 if __name__ == '__main__':
     app.run(debug=True)
