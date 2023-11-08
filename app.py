@@ -7,7 +7,7 @@ from sqlalchemy import between
 from sqlalchemy import func
 from sqlalchemy.sql import functions
 # import re 
-from sqlalchemy.dialects.sqlite import DATE
+
 from flask_marshmallow import Marshmallow
 from flask_cors import CORS
 from flask_bcrypt import Bcrypt
@@ -23,10 +23,7 @@ app.config['SQLALCHEMY_DATABASE_URI']= 'sqlite:///' + os.path.join(basedir, 'app
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 bc = Bcrypt(app)
-# d = DATE(
-#             storage_format="%(day)02d/%(month)02d/%(year)04d",
-#             regexp=re.compile("(?P<day>\d+)/(?P<month>\d+)/(?P<year>\d+)")
-#         )
+
 
 app.config['JWT_TOKEN_LOCATION'] = ["headers", "cookies"]
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
@@ -153,6 +150,15 @@ def get_usuarios():
     result = multi_usuarios_schema.dump(all_usuarios)
     return jsonify(result), 200
 
+#EndPoint to query all users client
+@app.route('/usuario/get/cliente', methods=["GET"])
+def get_usuarios_cliente():
+    query = db.session.execute(db.select(Usuarios.id_usuario,Usuarios.nombre_usuario, Usuarios.apellidos_usuario, 
+                                         Usuarios.email_usuario).where(Usuarios.id_rol_usuario == 3))
+
+    result = multi_usuarios_schema.dump(query)
+    return jsonify(result),200
+
 
 #EndPoint for querying a single user
 @app.route('/usuario/get/<id>', methods=["GET"])
@@ -226,6 +232,8 @@ def usuario_delete(id):
 
     return ("El usuario se ha eliminado correctamente!"), 200
 
+
+################################################ ROL USERS #################################################################### 
 
 #Table rol_usuario and EndPoints
 class Rol_usuario(db.Model):
@@ -472,20 +480,6 @@ def rejected_factura_ingreso(id):
     return "Factura rechazada con exito"
 
 
-#EndPoint Sum Total Factura Ingreso
-@app.route('/factura_ingreso/sum_totalingreso', methods=["GET"])
-def get_sum_totalingreso():
-
-    ##one method
-    # query = db.session.query(func.sum(Factura_ingreso.total_ingreso))
-    # results = [tuple(row) for row in query]
-    # list = json.dumps(results) 
-    # return (list)
-
-    #Two method
-    query = db.session.query(func.sum(Factura_ingreso.total_ingreso)).scalar()
-    return jsonify(query)
-
 ############################################## FACTURAS GASTOS ####################################################################     
 #Table Factura_gasto and EndPoints
 class Factura_gasto(db.Model):
@@ -727,18 +721,49 @@ def documento_delete(id):
 
 ############################################## ENDPOINTS IMPUESTOS ####################################################################
 
+#EndPoint Sum Total Factura Ingreso
+@app.route('/factura_ingreso/sum_totalingreso/<id>', methods=["GET"])
+def get_sum_totalingreso(id):
+
+    query = db.session.query(func.sum(Factura_ingreso.total_ingreso)).where(Factura_ingreso.id_factura_usuario == id,
+                                                                            Factura_ingreso.estado_factura == "ACEPTADA").scalar()
+    return jsonify(query)
+
+#EndPoint Sum IVA Factura Ingreso
+@app.route('/factura_ingreso/sum_ivaingreso/<id>', methods=["GET"])
+def get_sum_ivaingreso(id):
+
+    query = db.session.query(func.sum(Factura_ingreso.iva)).where(Factura_ingreso.id_factura_usuario == id,
+                                                                  Factura_ingreso.estado_factura == "ACEPTADA" ).scalar()
+    return jsonify(query)
 
 
+#EndPoint Sum Total Factura Gasto
+@app.route('/factura_gasto/sum_totalgasto/<id>', methods=["GET"])
+def get_sum_totalgasto(id):
+
+    query = db.session.query(func.sum(Factura_gasto.total_gasto)).where(Factura_gasto.id_factura_usuario == id, 
+                                                                        Factura_gasto.estado_factura == "ACEPTADA" ).scalar()
+    return jsonify(query)
+
+#EndPoint Sum IVA Factura Gasto
+@app.route('/factura_gasto/sum_ivagasto/<id>', methods=["GET"])
+def get_sum_ivagasto(id):
+
+    query = db.session.query(func.sum(Factura_gasto.iva)).where(Factura_gasto.id_factura_usuario == id,
+                                                                Factura_gasto.estado_factura == "ACEPTADA").scalar()
+    return jsonify(query)
 
 
+# #EndPoint Get Trimestre
+# @app.route('/factura_ingreso/get_trimestre', methods=["GET"])
+# def get_tri_factura_ingreso():
+#     query = db.session.execute(db.select(Factura_ingreso.base_imp,Factura_ingreso.iva, Factura_ingreso.total_ingreso
+#                                          ).where(Factura_ingreso.fecha_ingreso.between('2023-08-01', '2023-10-31')))
+
+#     result = multi_factura_ingreso_schema.dump(query)
+#     return jsonify(result)
 
 
-@app.route('/factura_ingreso/get_trimestre', methods=["GET"])
-def get_tri_factura_ingreso():
-    query = db.session.execute(db.select(Factura_ingreso.base_imp,Factura_ingreso.iva, Factura_ingreso.total_ingreso
-                                         ).where(Factura_ingreso.fecha_ingreso.between('2023-08-01', '2023-10-31')))
-
-    result = multi_factura_ingreso_schema.dump(query)
-    return jsonify(result)
 if __name__ == '__main__':
     app.run(debug=True)
