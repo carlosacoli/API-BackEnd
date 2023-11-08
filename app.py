@@ -3,6 +3,9 @@ import json
 from flask import Flask, request, jsonify, send_file
 from datetime import timedelta, datetime
 from flask_sqlalchemy import SQLAlchemy
+from sqlalchemy import between
+from sqlalchemy import func
+from sqlalchemy.sql import functions
 # import re 
 from sqlalchemy.dialects.sqlite import DATE
 from flask_marshmallow import Marshmallow
@@ -35,32 +38,38 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=3)
 app.config["JWT_SECRET_KEY"] = "D5*F?_1?-d$f*1_Sndjñ2*$dsj"
 jwt = JWTManager(app)
 
-
+############################################## Users #################################################################### 
 #Table users and EndPoints
 class Usuarios(db.Model):
     id_usuario = db.Column(db.Integer, primary_key=True)
     nombre_usuario = db.Column(db.String(50), nullable=False, unique=False)
     apellidos_usuario = db.Column(db.String(60), nullable=False, unique=False)
+    provincia_usuario = db.Column(db.String(30), nullable=False, unique=False)
+    ciudad_usuario = db.Column(db.String(30), nullable=False, unique=False)
+    direccion_usuario = db.Column(db.VARCHAR(100), nullable=False, unique=False)
+    telefono_usuario = db.Column(db.Integer, nullable=False, unique=False)
+    fecha_creacion = db.Column(db.Date, nullable=False)
     email_usuario = db.Column(db.VARCHAR(60), nullable=False, unique=True)
     password = db.Column(db.VARCHAR(15), nullable=False, unique=False)
-    telefono_usuario = db.Column(db.Integer, nullable=False, unique=False)
-    direccion_usuario = db.Column(db.VARCHAR(100), nullable=False, unique=False)
     id_rol_usuario = db.Column(db.Integer, nullable=False, unique=False)
 
-    def __init__(self, nombre_usuario, apellidos_usuario, email_usuario,
-                password, telefono_usuario, direccion_usuario, id_rol_usuario):
+    def __init__(self, nombre_usuario, apellidos_usuario, provincia_usuario, ciudad_usuario, direccion_usuario,  
+                 telefono_usuario, fecha_creacion,  email_usuario, password, id_rol_usuario):
         self.nombre_usuario = nombre_usuario
         self.apellidos_usuario = apellidos_usuario
+        self.provincia_usuario = provincia_usuario
+        self.ciudad_usuario = ciudad_usuario
+        self.direccion_usuario = direccion_usuario
+        self.telefono_usuario = telefono_usuario
+        self.fecha_creacion = fecha_creacion
         self.email_usuario = email_usuario
         self.password = password
-        self.telefono_usuario = telefono_usuario
-        self.direccion_usuario = direccion_usuario
         self.id_rol_usuario = id_rol_usuario
 
 class UsuariosSchema(ma.Schema):
     class Meta:
-        fields = ('nombre_usuario', 'apellidos_usuario', 'email_usuario',
-                  'password','telefono_usuario', 'direccion_usuario', 'id_rol_usuario')
+        fields = ('id_usuario','nombre_usuario', 'apellidos_usuario', 'provincia_usuario', 'ciudad_usuario', 
+                  'direccion_usuario', 'telefono_usuario', 'fecha_creacion','email_usuario','password', 'id_rol_usuario')
         
 usuarios_schema = UsuariosSchema()
 multi_usuarios_schema = UsuariosSchema(many=True)
@@ -70,28 +79,33 @@ multi_usuarios_schema = UsuariosSchema(many=True)
 @app.route('/usuario/add', methods=["POST"])
 def add_usuario():
     
-        nombre_usuario = request.json['nombre_usuario']
-        apellidos_usuario = request.json['apellidos_usuario']
-        email_usuario = request.json['email_usuario']
-        password = request.json['password']
-        telefono_usuario = request.json['telefono_usuario']
-        direccion_usuario = request.json['direccion_usuario']
-        id_rol_usuario = request.json['id_rol_usuario']
+        nombre_usuario = request.form['nombre']
+        apellidos_usuario = request.form['apellidos']
+        provincia_usuario = request.form['provincia']
+        ciudad_usuario = request.form['ciudad']
+        direccion_usuario = request.form['direccion']
+        telefono_usuario = request.form['telefono']
+        fecha_creacion = request.form['fecha_creacion']
+        fecha_creacion = datetime.strptime(fecha_creacion, "%d/%m/%Y")
+        email_usuario = request.form['email']
+        password = request.form['password']
+        id_rol_usuario = request.form['id_rol_usuario']
 
         pw_hash = bc.generate_password_hash(password, 15).decode('utf-8')
         
-        new_usuario = Usuarios(nombre_usuario, apellidos_usuario, email_usuario,
-                                pw_hash, telefono_usuario, direccion_usuario, id_rol_usuario)
+        new_usuario = Usuarios(nombre_usuario, apellidos_usuario, provincia_usuario, ciudad_usuario, direccion_usuario, 
+                               telefono_usuario, fecha_creacion, email_usuario, pw_hash, id_rol_usuario)
         
         db.session.add(new_usuario)
         db.session.commit()
 
-        usuario = Usuarios.query.get(new_usuario.id_usuario)
-        return usuarios_schema.jsonify(usuario)
+        return "Usuario creado exitosamente"
 
+        # usuario = Usuarios.query.get(new_usuario.id_usuario)
+        # return usuarios_schema.jsonify(usuario)
 
+    
 #EndPoint to Verify user
-
 @app.route('/verify', methods=["POST"])
 def verify():
 
@@ -146,29 +160,62 @@ def get_single_usuario(id):
     single_usuario = Usuarios.query.get(id)
     return usuarios_schema.jsonify(single_usuario), 200
 
+#EndPoint to query all to edit user
+@app.route('/usuario/get_edit/<id>', methods=["GET"])
+def get_toedit_user(id):
+    query = db.session.execute(db.select(Usuarios.id_usuario,Usuarios.nombre_usuario, Usuarios.apellidos_usuario,Usuarios.provincia_usuario, 
+                                         Usuarios.ciudad_usuario, Usuarios.direccion_usuario, Usuarios.telefono_usuario, Usuarios.email_usuario
+                                         ).where(Usuarios.id_usuario == id))
+
+    result = multi_usuarios_schema.dump(query)
+    return jsonify(result),200
+
+#EndPoint to query all to view user
+@app.route('/usuario/get_view/<id>', methods=["GET"])
+def get_toview_user(id):
+    query = db.session.execute(db.select(Usuarios.id_usuario,Usuarios.nombre_usuario, Usuarios.apellidos_usuario,Usuarios.provincia_usuario, 
+                                         Usuarios.ciudad_usuario, Usuarios.direccion_usuario, Usuarios.telefono_usuario, Usuarios.fecha_creacion, 
+                                         Usuarios.email_usuario, Usuarios.id_rol_usuario).where(Usuarios.id_usuario == id))
+
+    result = multi_usuarios_schema.dump(query)
+    return jsonify(result),200
+
 
 #EndPoint for updating a user
-@app.route('/usuario/update/<id>', methods=["PUT"])
+@app.route('/usuario/update/<id>', methods=["PATCH"])
 def usuario_update(id):
-    usuario = Usuarios.query.get(id)
-    nombre_usuario = request.json['nombre_usuario']
-    apellidos_usuario = request.json['apellidos_usuario']
-    email_usuario = request.json['email_usuario']
-    password = request.json['password']
-    telefono_usuario = request.json['telefono_usuario']
-    direccion_usuario = request.json['direccion_usuario']
-    id_rol_usuario = request.json['id_rol_usuario']
+    usuario = db.session.get(Usuarios, id)
+    nombre_usuario = request.form['nombre']
+    apellidos_usuario = request.form['apellidos']
+    provincia_usuario = request.form['provincia']
+    ciudad_usuario = request.form['ciudad']
+    direccion_usuario = request.form['direccion']
+    telefono_usuario = request.form['telefono']
+    email_usuario = request.form['email']
+
 
     usuario.nombre_usuario = nombre_usuario
     usuario.apellidos_usuario = apellidos_usuario
-    usuario.email_usuario = email_usuario
-    usuario.password = password
-    usuario.telefono_usuario = telefono_usuario
+    usuario.provincia_usuario = provincia_usuario
+    usuario.ciudad_usuario = ciudad_usuario
     usuario.direccion_usuario = direccion_usuario
-    usuario.id_rol_usuario = id_rol_usuario
+    usuario.telefono_usuario = telefono_usuario
+    usuario.email_usuario = email_usuario
 
     db.session.commit()
-    return usuarios_schema.jsonify(usuario)
+    return "Usuario actualizado exitosamente"
+
+#EndPoint for updating a user
+@app.route('/usuario/update_password/<id>', methods=["PATCH"])
+def usuario_update_password(id):
+    usuario = db.session.get(Usuarios, id)
+    password = request.form['password']
+
+    pw_hash = bc.generate_password_hash(password, 15).decode('utf-8')
+
+    usuario.password = pw_hash
+    db.session.commit()
+    return "Password Cambiado exitosamente"
 
 #EndPoint for deleting a user
 @app.route('/usuario/delete/<id>', methods=["DELETE"])
@@ -177,7 +224,7 @@ def usuario_delete(id):
     db.session.delete(usuario)
     db.session.commit()
 
-    return "El usuario se ha eliminado correctamente!"
+    return ("El usuario se ha eliminado correctamente!"), 200
 
 
 #Table rol_usuario and EndPoints
@@ -333,11 +380,11 @@ def add_factura_ingreso():
 
 
 #EndPoint to query all exept "archivo" in table factura_ingreso
-@app.route('/factura_ingreso/get', methods=["GET"])
-def get_facturas_ingresos():
+@app.route('/factura_ingreso/get/<id>', methods=["GET"])
+def get_facturas_ingresos(id):
     query = db.session.execute(db.select(Factura_ingreso.id,Factura_ingreso.concepto, Factura_ingreso.fecha_ingreso, Factura_ingreso.fecha_subida,
                        Factura_ingreso.base_imp, Factura_ingreso.iva, Factura_ingreso.total_ingreso, Factura_ingreso.nombre_archivo, 
-                       Factura_ingreso.estado_factura, Factura_ingreso.id_factura_usuario))
+                       Factura_ingreso.estado_factura, Factura_ingreso.id_factura_usuario).where(Factura_ingreso.id_factura_usuario == id))
 
     result = multi_factura_ingreso_schema.dump(query)
     return jsonify(result)
@@ -424,6 +471,21 @@ def rejected_factura_ingreso(id):
     db.session.commit()
     return "Factura rechazada con exito"
 
+
+#EndPoint Sum Total Factura Ingreso
+@app.route('/factura_ingreso/sum_totalingreso', methods=["GET"])
+def get_sum_totalingreso():
+
+    ##one method
+    # query = db.session.query(func.sum(Factura_ingreso.total_ingreso))
+    # results = [tuple(row) for row in query]
+    # list = json.dumps(results) 
+    # return (list)
+
+    #Two method
+    query = db.session.query(func.sum(Factura_ingreso.total_ingreso)).scalar()
+    return jsonify(query)
+
 ############################################## FACTURAS GASTOS ####################################################################     
 #Table Factura_gasto and EndPoints
 class Factura_gasto(db.Model):
@@ -493,12 +555,21 @@ def add_factura_gasto():
         return "Factura subida exitosamente"
 
 
-#EndPoint to query all exept "archivo" in table factura_ingreso
-@app.route('/factura_gasto/get', methods=["GET"])
-def get_facturas_gastos():
+#EndPoint to query all exept "archivo" in table factura_gasto
+@app.route('/factura_gasto/get/<id>', methods=["GET"])
+def get_facturas_gastos(id):
     query = db.session.execute(db.select(Factura_gasto.id,Factura_gasto.concepto, Factura_gasto.fecha_gasto, Factura_gasto.fecha_subida,
                        Factura_gasto.base_imp, Factura_gasto.iva, Factura_gasto.total_gasto, Factura_gasto.nombre_archivo, 
-                       Factura_gasto.estado_factura, Factura_gasto.id_factura_usuario))
+                       Factura_gasto.estado_factura, Factura_gasto.id_factura_usuario).where(Factura_gasto.id_factura_usuario == id))
+
+    result = multi_factura_gasto_schema.dump(query)
+    return jsonify(result)
+
+#EndPoint to query all exept "archivo" to edit factura_gasto
+@app.route('/factura_gasto/get_edit/<id>', methods=["GET"])
+def get_toedit_factura_gasto(id):
+    query = db.session.execute(db.select(Factura_gasto.id,Factura_gasto.concepto, Factura_gasto.fecha_gasto,Factura_gasto.base_imp, 
+                                         Factura_gasto.iva, Factura_gasto.total_gasto).where(Factura_gasto.id == id))
 
     result = multi_factura_gasto_schema.dump(query)
     return jsonify(result)
@@ -577,6 +648,97 @@ def rejected_factura_gasto(id):
     return "Factura rechazada con exito"
 
 
+############################################## DOCUMENTOS #################################################################### 
+#Table Documentos and EndPoints
+class Documentos(db.Model):
+    id = db.Column(db.Integer, primary_key=True)
+    nombre_documento = db.Column(db.VARCHAR (70), nullable=False)
+    comentario = db.Column(db.VARCHAR(100), nullable=False)
+    documento = db.Column(db.LargeBinary, nullable=False)
+    nombre_file = db.Column(db.VARCHAR(100), nullable=False)
+    fecha_subida = db.Column(db.Date, nullable=False)
+    id_rol_upload = db.Column(db.Integer)
+    id_documento_user= db.Column(db.Integer)
 
+    def __init__(self, nombre_documento, comentario, documento, nombre_file ,fecha_subida, id_rol_upload, id_documento_user):
+        self.nombre_documento = nombre_documento
+        self.comentario = comentario
+        self.documento = documento
+        self.nombre_file = nombre_file
+        self.fecha_subida = fecha_subida
+        self.id_rol_upload = id_rol_upload
+        self.id_documento_user = id_documento_user
+
+
+class DocumentoSchema(ma.Schema):
+    class Meta:
+        fields = ('id','nombre_documento','comentario','documento','nombre_file','fecha_subida','id_rol_upload','id_documento_user')
+        
+documento_schema = DocumentoSchema()
+multi_documento_schema = DocumentoSchema(many=True)
+
+
+# EndPoint to create a new documento
+@app.route('/documento/add', methods=["POST"])
+def add_documento():
+    
+        nombre_documento = request.form['nombre']
+        comentario = request.form['comentario']
+        documento = request.files['documento']
+        documento = documento.read()
+        n_file = request.files['documento']
+        nombre_file= n_file.filename
+        fecha_subida = request.form['fecha_subida']
+        fecha_subida = datetime.strptime(fecha_subida, "%d/%m/%Y")
+        id_rol_upload = request.form['rol_upload']
+        id_documento_user = request.form['id_documento_user']
+
+        new_documento = Documentos(nombre_documento, comentario, documento, nombre_file, fecha_subida, id_rol_upload, id_documento_user)
+        
+        db.session.add(new_documento)
+        db.session.commit()
+
+        return ("Documento subido exitosamente"),200
+
+#EndPoint to query all exept "file" in table documentos
+@app.route('/documento/get/<id>', methods=["GET"])
+def get_documentos(id):
+    query = db.session.execute(db.select(Documentos.id, Documentos.nombre_documento, Documentos.comentario, 
+                                        Documentos.fecha_subida, Documentos.id_rol_upload).where(Documentos.id_documento_user == id))
+
+    result = multi_documento_schema.dump(query)
+    return jsonify(result), 200
+
+#EndPoint for Download a Documento File
+@app.route('/documento/download/<down_id>', methods=["GET"])
+def documento_download(down_id):
+    download = Documentos.query.filter_by(id=down_id).first()
+    return send_file(BytesIO(download.documento), download_name=download.nombre_file, as_attachment=True)
+
+#EndPoint for deleting a documento
+@app.route('/documento/delete/<id>', methods=["DELETE"])
+def documento_delete(id):
+    documento = Documentos.query.get(id)
+    db.session.delete(documento)
+    db.session.commit()
+
+    return ("El documento se elimino correctamente!"), 200
+
+
+############################################## ENDPOINTS IMPUESTOS ####################################################################
+
+
+
+
+
+
+
+@app.route('/factura_ingreso/get_trimestre', methods=["GET"])
+def get_tri_factura_ingreso():
+    query = db.session.execute(db.select(Factura_ingreso.base_imp,Factura_ingreso.iva, Factura_ingreso.total_ingreso
+                                         ).where(Factura_ingreso.fecha_ingreso.between('2023-08-01', '2023-10-31')))
+
+    result = multi_factura_ingreso_schema.dump(query)
+    return jsonify(result)
 if __name__ == '__main__':
     app.run(debug=True)
