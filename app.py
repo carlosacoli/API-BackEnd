@@ -35,7 +35,7 @@ app.config["JWT_ACCESS_TOKEN_EXPIRES"] = timedelta(hours=3)
 # Create Secret KEY
 app.config["JWT_SECRET_KEY"] = "D5*F?_1?-d$f*1_Sndjñ2*$dsj"
 jwt = JWTManager(app)
-
+# Nathan was here!
 ############################################## Users #################################################################### 
 #Table users and EndPoints
 class Usuarios(db.Model):
