@@ -19,7 +19,7 @@ CORS(app, supports_credentials=True, expose_headers=["Content-Disposition"])
 
 # basedir = os.path.abspath(os.path.dirname(__file__))
 # app.config['SQLALCHEMY_DATABASE_URI']= 'sqlite:///' + os.path.join(basedir, 'app.sqlite')
-app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://kbwxbgnclbfzyq:e59cdc3a3dd374476c3d5ab4c18b7feb0f909ec0d472c05a043b19e28d69b543@ec2-52-215-68-14.eu-west-1.compute.amazonaws.com:5432/d4ggr8viruasqs'
+app.config['SQLALCHEMY_DATABASE_URI']= 'postgresql://vwwsqhpzlxsgng:fa80f1b03dd1f2b05c0bce48da7e59c0b69078f69c705bb0cca8ada62a90896a@ec2-34-250-252-161.eu-west-1.compute.amazonaws.com:5432/dfcimeit2ohvdi'
 db = SQLAlchemy(app)
 ma = Marshmallow(app)
 bc = Bcrypt(app)
