@@ -47,7 +47,7 @@ class Usuarios(db.Model):
     telefono_usuario = db.Column(db.Integer, nullable=False, unique=False)
     fecha_creacion = db.Column(db.Date, nullable=False)
     email_usuario = db.Column(db.VARCHAR(60), nullable=False, unique=True)
-    password = db.Column(db.VARCHAR(15), nullable=False, unique=False)
+    password = db.Column(db.VARCHAR(50), nullable=False, unique=False)
     id_rol_usuario = db.Column(db.Integer, nullable=False, unique=False)
 
     def __init__(self, nombre_usuario, apellidos_usuario, provincia_usuario, ciudad_usuario, direccion_usuario,  
