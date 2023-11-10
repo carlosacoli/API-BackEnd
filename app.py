@@ -76,17 +76,17 @@ multi_usuarios_schema = UsuariosSchema(many=True)
 @app.route('/usuario/add', methods=["POST"])
 def add_usuario():
     
-        nombre_usuario = request.json['nombre']
-        apellidos_usuario = request.json['apellidos']
-        provincia_usuario = request.json['provincia']
-        ciudad_usuario = request.json['ciudad']
-        direccion_usuario = request.json['direccion']
-        telefono_usuario = request.json['telefono']
-        fecha_creacion = request.json['fecha_creacion']
+        nombre_usuario = request.form['nombre']
+        apellidos_usuario = request.form['apellidos']
+        provincia_usuario = request.form['provincia']
+        ciudad_usuario = request.form['ciudad']
+        direccion_usuario = request.form['direccion']
+        telefono_usuario = request.form['telefono']
+        fecha_creacion = request.form['fecha_creacion']
         fecha_creacion = datetime.strptime(fecha_creacion, "%d/%m/%Y")
-        email_usuario = request.json['email']
-        password = request.json['password']
-        id_rol_usuario = request.json['id_rol_usuario']
+        email_usuario = request.form['email']
+        password = request.form['password']
+        id_rol_usuario = request.form['id_rol_usuario']
 
         pw_hash = bc.generate_password_hash(password, 15).decode('utf-8')
         
