@@ -14,6 +14,8 @@ flask-cors = "*"
 gunicorn = "*"
 psycopg2 = "*"
 waitress = "*"
+flask-bcrypt = "*"
+flask-jwt-extended = "*"
 
 [dev-packages]
 
