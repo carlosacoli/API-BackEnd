@@ -13,6 +13,7 @@ marshmallow-sqlalchemy = "*"
 flask-cors = "*"
 gunicorn = "*"
 psycopg2 = "*"
+waitress = "*"
 
 [dev-packages]
 

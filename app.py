@@ -5,7 +5,6 @@ from datetime import timedelta, datetime
 from flask_sqlalchemy import SQLAlchemy
 from sqlalchemy import between
 from sqlalchemy import func
-from sqlalchemy.sql import functions
 # import re 
 
 from flask_marshmallow import Marshmallow
@@ -142,7 +141,9 @@ def verify():
 def optionally_protected():
     # Access the identity of the current user with get_jwt_identity
     current_identity = get_jwt_identity()
-    return jsonify({"login_status": "ONLINE", "logged_in_as": current_identity}), 200    
+    return jsonify({"login_status": "ONLINE", "logged_in_as": current_identity}), 200  
+
+
 
 #EndPoint to query all users
 @app.route('/usuario/get', methods=["GET"])
