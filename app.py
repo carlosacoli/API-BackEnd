@@ -727,7 +727,7 @@ def documento_delete(id):
 @app.route('/factura_ingreso/sum_totalingreso/<id>', methods=["GET"])
 def get_sum_totalingreso(id):
 
-    query = db.session.query(func.sum(Factura_ingreso.total_ingreso)).where(Factura_ingreso.id_factura_usuario == id,
+    query = db.session.query(func.sum(Factura_ingreso.base_imp)).where(Factura_ingreso.id_factura_usuario == id,
                                                                             Factura_ingreso.estado_factura == "ACEPTADA").scalar()
     return jsonify(query)
 
@@ -744,7 +744,7 @@ def get_sum_ivaingreso(id):
 @app.route('/factura_gasto/sum_totalgasto/<id>', methods=["GET"])
 def get_sum_totalgasto(id):
 
-    query = db.session.query(func.sum(Factura_gasto.total_gasto)).where(Factura_gasto.id_factura_usuario == id, 
+    query = db.session.query(func.sum(Factura_gasto.base_imp)).where(Factura_gasto.id_factura_usuario == id, 
                                                                         Factura_gasto.estado_factura == "ACEPTADA" ).scalar()
     return jsonify(query)
 
