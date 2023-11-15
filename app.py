@@ -595,10 +595,10 @@ def factura_gasto_update(id):
     nombre_archivo = n_archivo.filename
 
     factura_gasto.concepto = concepto
-    factura_gasto.fecha_ingreso = fecha_gasto
+    factura_gasto.fecha_gasto = fecha_gasto
     factura_gasto.base_imp = base_imp
     factura_gasto.iva = iva
-    factura_gasto.total_ingreso = total_gasto
+    factura_gasto.total_gasto = total_gasto
     factura_gasto.archivo = archivo
     factura_gasto.nombre_archivo = nombre_archivo
 
