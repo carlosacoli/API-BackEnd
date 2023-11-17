@@ -44,11 +44,17 @@ class Usuarios(db.Model):
     provincia_usuario = db.Column(db.String(30), nullable=False, unique=False)
     ciudad_usuario = db.Column(db.String(30), nullable=False, unique=False)
     direccion_usuario = db.Column(db.VARCHAR(100), nullable=False, unique=False)
-    telefono_usuario = db.Column(db.Numeric(precision=14), nullable=False, unique=False)
+    telefono_usuario = db.Column(db.VARCHAR(17), nullable=False, unique=False)
     fecha_creacion = db.Column(db.Date, nullable=False)
     email_usuario = db.Column(db.VARCHAR(60), nullable=False, unique=True)
     password = db.Column(db.VARCHAR(100), nullable=False, unique=False)
-    id_rol_usuario = db.Column(db.Integer, nullable=False, unique=False)
+    id_rol_usuario = db.Column(db.Integer, db.ForeignKey('rol_usuario.id_rol'), nullable= False, unique=False)
+    #Relationship
+    id_rol_user = db.relationship("Rol_usuario", back_populates="usuario")
+    # facturas_ingresos_user = db.relationship('Factura_ingreso', backref='usuarios', cascade='all,delete,delete-orphan', lazy='dynamic')
+    # facturas_gastos_user = db.relationship('Factura_gasto', backref='usuarios', cascade='all,delete,delete-orphan', lazy='dynamic')
+    # documentos_user = db.relationship('Documentos', backref='usuarios', cascade='all,delete,delete-orphan', lazy='dynamic')
+
 
     def __init__(self, nombre_usuario, apellidos_usuario, provincia_usuario, ciudad_usuario, direccion_usuario,  
                  telefono_usuario, fecha_creacion,  email_usuario, password, id_rol_usuario):
@@ -152,6 +158,8 @@ def get_usuarios():
     result = multi_usuarios_schema.dump(all_usuarios)
     return jsonify(result), 200
 
+
+
 #EndPoint to query all users client
 @app.route('/usuario/get/cliente', methods=["GET"])
 def get_usuarios_cliente():
@@ -181,12 +189,49 @@ def get_toedit_user(id):
 #EndPoint to query all to view user
 @app.route('/usuario/get_view/<id>', methods=["GET"])
 def get_toview_user(id):
-    query = db.session.execute(db.select(Usuarios.id_usuario,Usuarios.nombre_usuario, Usuarios.apellidos_usuario,Usuarios.provincia_usuario, 
-                                         Usuarios.ciudad_usuario, Usuarios.direccion_usuario, Usuarios.telefono_usuario, Usuarios.fecha_creacion, 
-                                         Usuarios.email_usuario, Usuarios.id_rol_usuario).where(Usuarios.id_usuario == id))
+    query = db.session.query(Usuarios.id_usuario,Usuarios.nombre_usuario, Usuarios.apellidos_usuario,Usuarios.provincia_usuario, 
+                            Usuarios.ciudad_usuario, Usuarios.direccion_usuario, Usuarios.telefono_usuario, Usuarios.fecha_creacion, 
+                            Usuarios.email_usuario, Rol_usuario.nombre_rol).join(Rol_usuario).filter(Usuarios.id_usuario == id).all()
 
-    result = multi_usuarios_schema.dump(query)
-    return jsonify(result),200
+    data = []
+    for (id_usuario, nombre_usuario, apellidos_usuario, provincia_usuario, ciudad_usuario, direccion_usuario, telefono_usuario, fecha_creacion, 
+        email_usuario,  nombre_rol) in query:
+        data.append({
+            'id_usuario': id_usuario,
+            'nombre_usuario': nombre_usuario,
+            'apellidos_usuario': apellidos_usuario,
+            'provincia_usuario': provincia_usuario,
+            'ciudad_usuario': ciudad_usuario,
+            'direccion_usuario': direccion_usuario,
+            'telefono_usuario': telefono_usuario,
+            'fecha_creacion': fecha_creacion,
+            'email_usuario': email_usuario,
+            'nombre_rol': nombre_rol
+        })
+
+    return jsonify(data),200
+    
+
+#EndPoint to query all users details
+@app.route('/usuario/get-users-details', methods=["GET"])
+def get_users_gestion():
+    query = db.session.query(Usuarios.id_usuario,Usuarios.nombre_usuario, Usuarios.apellidos_usuario, Usuarios.email_usuario, 
+                             Usuarios.telefono_usuario, Usuarios.fecha_creacion,Rol_usuario.nombre_rol).join(Rol_usuario).all()
+
+
+    data = []
+    for id_usuario, nombre_usuario, apellidos_usuario, email_usuario, telefono_usuario, fecha_creacion, nombre_rol in query:
+        data.append({
+            'id_usuario': id_usuario,
+            'nombre_usuario': nombre_usuario,
+            'apellidos_usuario': apellidos_usuario,
+            'email_usuario': email_usuario,
+            'telefono_usuario': telefono_usuario,
+            'fecha_creacion': fecha_creacion,
+            'nombre_rol': nombre_rol
+        })
+
+    return jsonify(data),200
 
 
 #EndPoint for updating a user
@@ -241,6 +286,9 @@ def usuario_delete(id):
 class Rol_usuario(db.Model):
     id_rol = db.Column(db.Integer, primary_key=True)
     nombre_rol = db.Column(db.String(20), nullable=False, unique=False)
+    #Relationship
+    usuario = db.relationship('Usuarios',  back_populates="id_rol_user", cascade='all,delete,delete-orphan', lazy=True)
+    documento = db.relationship('Documentos',  back_populates="id_rol_upload_doc", cascade='all,delete,delete-orphan', lazy=True)
 
     def __init__(self, nombre_rol):
         self.nombre_rol = nombre_rol
@@ -317,7 +365,7 @@ class Factura_ingreso(db.Model):
     archivo = db.Column(db.LargeBinary, nullable=False)
     nombre_archivo = db.Column(db.VARCHAR(100), nullable=False)
     estado_factura = db.Column(db.String, nullable=False)
-    id_factura_usuario = db.Column(db.Integer)
+    id_factura_usuario = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable= False)
 
     def __init__(self, concepto, fecha_ingreso, fecha_subida, base_imp, iva, 
                  total_ingreso, archivo, nombre_archivo, estado_factura, id_factura_usuario):
@@ -495,7 +543,7 @@ class Factura_gasto(db.Model):
     archivo = db.Column(db.LargeBinary, nullable=False)
     nombre_archivo = db.Column(db.VARCHAR(100), nullable=False)
     estado_factura = db.Column(db.String, nullable=False)
-    id_factura_usuario = db.Column(db.Integer)
+    id_factura_usuario = db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable= False)
 
     def __init__(self, concepto, fecha_gasto, fecha_subida, base_imp, iva, 
                  total_gasto, archivo,nombre_archivo, estado_factura, id_factura_usuario):
@@ -647,14 +695,18 @@ def rejected_factura_gasto(id):
 ############################################## DOCUMENTOS #################################################################### 
 #Table Documentos and EndPoints
 class Documentos(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
+    id_documento = db.Column(db.Integer, primary_key=True)
     nombre_documento = db.Column(db.VARCHAR (70), nullable=False)
     comentario = db.Column(db.VARCHAR(100), nullable=False)
     documento = db.Column(db.LargeBinary, nullable=False)
     nombre_file = db.Column(db.VARCHAR(100), nullable=False)
     fecha_subida = db.Column(db.Date, nullable=False)
-    id_rol_upload = db.Column(db.Integer)
-    id_documento_user= db.Column(db.Integer)
+    # id_rol_upload = db.Column(db.Integer, nullable= False, unique=False)
+    id_rol_upload = db.Column(db.Integer, db.ForeignKey('rol_usuario.id_rol'), nullable= False, unique=False)
+    id_documento_user= db.Column(db.Integer, db.ForeignKey('usuarios.id_usuario'), nullable= False)
+    #Relationship
+    id_rol_upload_doc = db.relationship("Rol_usuario", back_populates="documento")
+
 
     def __init__(self, nombre_documento, comentario, documento, nombre_file ,fecha_subida, id_rol_upload, id_documento_user):
         self.nombre_documento = nombre_documento
@@ -668,7 +720,7 @@ class Documentos(db.Model):
 
 class DocumentoSchema(ma.Schema):
     class Meta:
-        fields = ('id','nombre_documento','comentario','documento','nombre_file','fecha_subida','id_rol_upload','id_documento_user')
+        fields = ('id_documento','nombre_documento','comentario','documento','nombre_file','fecha_subida','id_rol_upload','id_documento_user')
         
 documento_schema = DocumentoSchema()
 multi_documento_schema = DocumentoSchema(many=True)
@@ -699,16 +751,25 @@ def add_documento():
 #EndPoint to query all exept "file" in table documentos
 @app.route('/documento/get/<id>', methods=["GET"])
 def get_documentos(id):
-    query = db.session.execute(db.select(Documentos.id, Documentos.nombre_documento, Documentos.comentario, 
-                                        Documentos.fecha_subida, Documentos.id_rol_upload).where(Documentos.id_documento_user == id))
+    query = db.session.query(Documentos.id_documento, Documentos.nombre_documento, Documentos.comentario, 
+                            Documentos.fecha_subida, Rol_usuario.nombre_rol).join(Rol_usuario).filter(Documentos.id_documento_user == id).all()
 
-    result = multi_documento_schema.dump(query)
-    return jsonify(result), 200
+    data = []
+    for (id_documento, nombre_documento, comentario, fecha_subida, nombre_rol) in query:
+        data.append({
+            'id_documento': id_documento,
+            'nombre_documento': nombre_documento,
+            'comentario': comentario,
+            'fecha_subida': fecha_subida,
+            'nombre_rol': nombre_rol
+        })
+
+    return jsonify(data),200
 
 #EndPoint for Download a Documento File
 @app.route('/documento/download/<down_id>', methods=["GET"])
 def documento_download(down_id):
-    download = Documentos.query.filter_by(id=down_id).first()
+    download = Documentos.query.filter_by(id_documento=down_id).first()
     return send_file(BytesIO(download.documento), download_name=download.nombre_file, as_attachment=True)
 
 #EndPoint for deleting a documento
